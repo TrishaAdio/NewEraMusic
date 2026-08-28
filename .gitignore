@@ -1,10 +1,25 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
 .env
-.cache
-log.txt
-.DS_Store
+.env.*
+!.env.example
+
+# Session strings grant full account access.
 *.session
-raw_files/
-cache/
+session.txt
+cookies.txt
+
+# Go sidecar build output and vendored ntgcalls binaries.
+apps/voice/voice
+apps/voice/*.so
+apps/voice/*.a
+apps/voice/*.dylib
+apps/voice/*.dll
+apps/voice/ntgcalls.h
+apps/voice/gen/
+
 downloads/
-__pycache__/
-*.session-journal
+*.log
+.DS_Store
