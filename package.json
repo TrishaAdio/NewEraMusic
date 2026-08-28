@@ -1,0 +1,32 @@
+{
+  "name": "newera",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Telegram group-call music bot. TypeScript control plane, Go audio sidecar.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.28.1",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build --force",
+    "test": "node --test --experimental-strip-types \"packages/*/test/*.test.ts\"",
+    "test:style": "node --experimental-strip-types scripts/check-style.ts",
+    "preview": "pnpm build && node --experimental-strip-types scripts/preview.ts",
+    "session": "node --experimental-strip-types scripts/generate-session.ts",
+    "lint": "eslint .",
+    "sidecar": "cd apps/voice && CGO_ENABLED=1 go run .",
+    "proto": "buf generate",
+    "check": "pnpm typecheck && pnpm test && pnpm test:style"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "grammy": "^1.38.2",
+    "pino": "^9.7.0",
+    "zod": "^4.1.5"
+  }
+}

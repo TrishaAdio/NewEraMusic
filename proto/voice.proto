@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package newera.voice.v1;
+
+option go_package = "github.com/TrishaAdio/NewEraMusic/apps/voice/gen/voicev1;voicev1";
+
+// VoiceService is the only thing the Go sidecar exposes. It knows nothing about
+// music, queues, users, or Telegram commands — it holds WebRTC connections and
+// pushes bytes. All decisions live in the TypeScript control plane.
+service VoiceService {
+  rpc Join(JoinRequest) returns (JoinResponse);
+  rpc Leave(LeaveRequest) returns (LeaveResponse);
+
+  // Play swaps the active source on an already-joined call. The sidecar reads
+  // from the given URI (local fifo, file, or http) and does not buffer tracks.
+  rpc Play(PlayRequest) returns (PlayResponse);
+
+  rpc SetPaused(SetPausedRequest) returns (SetPausedResponse);
+  rpc Seek(SeekRequest) returns (SeekResponse);
+  rpc SetVolume(SetVolumeRequest) returns (SetVolumeResponse);
+
+  // Status is a point-in-time read, used by health checks and /stats.
+  rpc Status(StatusRequest) returns (StatusResponse);
+
+  // Events is a server stream of everything the control plane must react to.
+  // The single most important event is STREAM_ENDED, which drives queue
+  // advancement. Reconnect logic lives on the TS side.
+  rpc Events(EventsRequest) returns (stream Event);
+}
+
+enum MediaKind {
+  MEDIA_KIND_UNSPECIFIED = 0;
+  MEDIA_KIND_AUDIO = 1;
+  MEDIA_KIND_VIDEO = 2;
+}
+
+message MediaSpec {
+  // Anything ffmpeg can open. The TS resolvers produce these.
+  string uri = 1;
+  MediaKind kind = 2;
+
+  // Zero means "sidecar default". Set explicitly for video so the sidecar does
+  // not have to guess a profile.
+  uint32 width = 3;
+  uint32 height = 4;
+  uint32 fps = 5;
+  uint32 audio_bitrate_kbps = 6;
+}
+
+message JoinRequest {
+  int64 chat_id = 1;
+  MediaSpec media = 2;
+
+  // When true the sidecar joins muted and waits for Play. Used for prewarming
+  // a call before the first track finishes resolving.
+  bool start_paused = 3;
+}
+
+message JoinResponse {
+  string session_id = 1;
+}
+
+message LeaveRequest { int64 chat_id = 1; }
+message LeaveResponse {}
+
+message PlayRequest {
+  int64 chat_id = 1;
+  MediaSpec media = 2;
+}
+message PlayResponse {}
+
+message SetPausedRequest {
+  int64 chat_id = 1;
+  bool paused = 2;
+}
+message SetPausedResponse {}
+
+message SeekRequest {
+  int64 chat_id = 1;
+  uint64 position_ms = 2;
+}
+message SeekResponse {}
+
+message SetVolumeRequest {
+  int64 chat_id = 1;
+  // 0-200, where 100 is unity gain.
+  uint32 volume = 2;
+}
+message SetVolumeResponse {}
+
+message StatusRequest {
+  // Empty chat_id returns every active session.
+  int64 chat_id = 1;
+}
+
+message CallStatus {
+  int64 chat_id = 1;
+  string session_id = 2;
+  bool paused = 3;
+  uint64 position_ms = 4;
+  ConnectionState state = 5;
+}
+
+enum ConnectionState {
+  CONNECTION_STATE_UNSPECIFIED = 0;
+  CONNECTION_STATE_CONNECTING = 1;
+  CONNECTION_STATE_CONNECTED = 2;
+  CONNECTION_STATE_RECONNECTING = 3;
+  CONNECTION_STATE_CLOSED = 4;
+  CONNECTION_STATE_FAILED = 5;
+}
+
+message StatusResponse {
+  repeated CallStatus calls = 1;
+  // Sidecar-wide health, surfaced in /stats.
+  uint32 cpu_permille = 2;
+  uint64 rss_bytes = 3;
+  string ntgcalls_version = 4;
+}
+
+message EventsRequest {}
+
+message Event {
+  int64 chat_id = 1;
+  oneof payload {
+    StreamEnded stream_ended = 2;
+    ConnectionChanged connection_changed = 3;
+    SidecarError error = 4;
+    // Emitted when the last non-bot participant leaves, so the control plane
+    // can implement autoleave without polling.
+    CallEmpty call_empty = 5;
+  }
+}
+
+// The queue advances on this and only this.
+message StreamEnded { string session_id = 1; }
+
+message ConnectionChanged { ConnectionState state = 1; }
+
+message CallEmpty { uint32 participant_count = 1; }
+
+message SidecarError {
+  string code = 1;
+  string message = 2;
+  // When true the control plane should drop the session and rejoin rather than
+  // retry the current operation.
+  bool fatal = 3;
+}
