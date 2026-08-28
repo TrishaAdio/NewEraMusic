@@ -1,0 +1,20 @@
+{
+  "name": "livegen",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Watch an OpenAI-compatible model write code, live. Zero runtime dependencies.",
+  "engines": { "node": ">=22" },
+  "bin": { "livegen": "./src/cli.ts" },
+  "scripts": {
+    "start": "node --experimental-strip-types src/cli.ts",
+    "mock": "node --experimental-strip-types mock/server.ts",
+    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "demo": "node --experimental-strip-types scripts/demo.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^7.0.2"
+  }
+}
